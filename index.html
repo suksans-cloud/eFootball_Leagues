@@ -224,11 +224,14 @@ html[data-theme="light"]{color-scheme:light}
  html.side-collapsed .sidebar .nav{justify-content:center;padding:13px 0;width:100%;gap:0}
  html.side-collapsed .side-toggle{justify-content:center;padding:10px 0;width:100%;gap:0}
 }
+.sync-chip{cursor:pointer;font-size:11px;white-space:nowrap;border:1px solid currentColor;border-radius:999px;padding:2px 9px;opacity:.92}
+.sync-chip[data-kind="busy"]{opacity:.65}.sync-chip[data-kind="err"]{color:#ffb4b4;border-color:#ffb4b4}
+@media(max-width:480px){.sync-chip{font-size:10px;padding:2px 7px}}
 </style>
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand">PE <span>LEAGUE</span> 2026</div><div class="status"><i class="dot"></i> <span id="saveStatus">บันทึกข้อมูลในอุปกรณ์</span><button class="theme-btn" id="themeBtn" onclick="cycleTheme()" aria-label="เปลี่ยนธีม" title="เปลี่ยนธีม">🎨</button></div></header>
+<header class="top"><div class="brand">PE <span>LEAGUE</span> 2026</div><div class="status"><span id="syncChip" class="sync-chip" onclick="syncSheet()" style="display:none"></span><i class="dot"></i> <span id="saveStatus">บันทึกข้อมูลในอุปกรณ์</span><button class="theme-btn" id="themeBtn" onclick="cycleTheme()" aria-label="เปลี่ยนธีม" title="เปลี่ยนธีม">🎨</button></div></header>
 <div class="layout">
 <aside class="sidebar" id="sideNav">
 <button class="nav active" data-page="home" title="Home" onclick="showPage('home')"><span class="ico">⌂</span><span class="lbl">Home</span></button>
@@ -282,12 +285,12 @@ html[data-theme="light"]{color-scheme:light}
 <div class="section-title"><h2>สร้างโปรแกรมการแข่งขัน</h2><small>เลือกปีและ Season ได้ (สูงสุด 48 ต่อปี)</small></div><div class="card"><div class="form-grid"><div class="field"><label>ปี (ค.ศ.)</label><div style="display:flex;gap:8px"><select class="select" id="setYear" onchange="onSetYear()" style="flex:1"></select><button class="btn secondary" type="button" onclick="addYear(true)">+ ปี</button></div></div><div class="field"><label>ซีซั่น</label><select class="select" id="setNo" onchange="onSetNo()"></select></div><div class="field"><label>รูปแบบการแข่งขัน</label><select class="select" id="format"><option value="single">พบกันทีมละ 1 ครั้ง</option><option value="double">เหย้า-เยือน (2 ครั้ง)</option></select></div><div class="field"><label>จำนวนแมตช์ต่อสัปดาห์</label><select class="select" id="perWeek"><option>5</option><option selected>6</option><option>8</option><option>10</option><option>99</option></select></div><div class="field" style="grid-column:1/-1"><label>ทีมที่ลงแข่งใน Season นี้ <b id="rosterCount"></b></label><div class="roster-actions"><button type="button" class="btn secondary" onclick="rosterAll(true)">เลือกทั้งหมด</button><button type="button" class="btn secondary" onclick="rosterAll(false)">ล้างทั้งหมด</button><button type="button" class="btn secondary" onclick="rosterCopyPrev()">ใช้ชุดเดียวกับซีซั่นก่อนหน้า</button></div><div class="roster" id="rosterList"></div></div></div><p class="note" id="setInfo"></p><div class="actions"><button class="btn primary" onclick="saveSettingsSeason()">💾 บันทึก</button><button class="btn secondary" onclick="generateSchedule(true,true)">🎲 สุ่มโปรแกรมแข่งขัน</button><button class="btn secondary" onclick="generateSchedule(false,true)">สร้างตามลำดับทีม</button></div><p class="note">“บันทึก” จะสร้าง/เลือก Season ตามปีที่ระบุและตั้งค่ารูปแบบการแข่ง ส่วนการสร้างโปรแกรมใหม่จะแทนที่เฉพาะ Season ที่เลือก Season อื่นและประวัติจะไม่ถูกกระทบ แต่ละ Season เลือกจำนวนทีมไม่เท่ากันได้ (ขั้นต่ำ 2 ทีม) ถ้าเปลี่ยนรายชื่อทีมของ Season ที่สร้างโปรแกรมแล้ว ระบบจะสร้างโปรแกรมใหม่ให้</p></div>
 <div class="section-title"><h2>สำรอง / นำเข้าข้อมูล</h2></div><div class="card"><div class="actions" style="margin-top:0"><button class="btn primary" onclick="exportData()">Export JSON</button><label class="btn secondary" for="importFile">Import JSON</label><input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="importData(event)"><button class="btn secondary" onclick="downloadCSV()">Export ตารางคะแนน CSV</button></div><p class="note">ข้อมูลหลักบันทึกใน LocalStorage ของเบราว์เซอร์นี้ ใช้ Google Sheets เป็นที่สำรอง/ดูข้อมูลและย้ายไปเครื่องอื่นได้ (ตั้งค่าด้านล่าง)</p><div class="field" style="margin-top:15px"><label>Google Sheets Web App URL</label><input class="input" id="sheetUrl" placeholder="วาง URL ที่ลงท้ายด้วย /exec"></div>
 <div class="field" style="margin-top:10px"><label>รหัสผ่านป้องกัน (ถ้าตั้ง SECRET ในสคริปต์)</label><input class="input" id="sheetKey" placeholder="เว้นว่างได้" autocomplete="off"></div>
-<label class="auto-sync"><input type="checkbox" id="autoSync" onchange="toggleAutoSync(this.checked)"> ส่งข้อมูลอัตโนมัติทุกครั้งที่บันทึก (หลัง ~5 วินาที)</label>
-<div class="actions"><button class="btn secondary" onclick="saveSheetUrl()">บันทึกการตั้งค่า</button><button class="btn primary" onclick="syncSheet()">⬆️ ส่งข้อมูลไป Google Sheets</button><button class="btn secondary" onclick="pullSheet()">⬇️ ดึงข้อมูลกลับจากชีต</button></div>
+<label class="auto-sync"><input type="checkbox" id="autoSync" onchange="toggleAutoSync(this.checked)"> ซิงค์อัตโนมัติสองทาง — ดึงข้อมูลจากชีตตอนเปิดแอป/กลับมาที่แอป (ทุก ~30 วินาที) และส่งหลังบันทึก (~5 วินาที) · เปิดทุกเครื่องที่ใช้งาน</label>
+<div class="actions"><button class="btn secondary" onclick="saveSheetUrl()">บันทึกการตั้งค่า</button><button class="btn primary" onclick="syncSheet()">🔄 ซิงค์ตอนนี้</button><button class="btn secondary" onclick="pullSheet()">⬇️ ดึงจากชีตทับเครื่องนี้</button></div>
 <p class="note" id="sheetNote">ยังไม่ได้ตั้งค่า — ดูวิธีตั้งค่าด้านล่าง</p>
 <details class="gs-help"><summary>วิธีตั้งค่า Google Sheets (ทำครั้งเดียว)</summary>
 <ol><li>เปิด Google Sheet ใหม่ → เมนู <b>ส่วนขยาย → Apps Script</b></li><li>ลบโค้ดเดิม แล้ววางโค้ดด้านล่าง (กดปุ่มคัดลอก) จากนั้นกดบันทึก</li><li>กด <b>Deploy → New deployment → Web app</b> ตั้ง Execute as: <b>Me</b> และ Who has access: <b>Anyone</b> → Deploy → อนุญาตสิทธิ์</li><li>คัดลอก <b>Web app URL</b> (ลงท้าย /exec) มาวางด้านบน แล้วกดส่งข้อมูล</li></ol>
-<p class="note">แท็บที่สร้างให้: Teams, Seasons, Matches, Standings, TeamStats, AllTime (อ่านง่าย/ทำกราฟต่อได้) และ Backup (ก้อนสำรองทั้งหมดสำหรับกู้คืน อย่าแก้ไข) · โลโก้ที่อัปโหลดเองจะไม่ถูกส่ง ให้เก็บด้วย Export JSON</p>
+<p class="note">ใช้หลายเครื่อง: ตั้งค่า URL เดียวกันและเปิด “ซิงค์อัตโนมัติ” ทุกเครื่อง · เครื่องที่ข้อมูลเก่าจะดึงข้อมูลล่าสุดมารวมก่อนส่ง ไม่เขียนทับของใหม่ · แท็บ Backup และ Logos ใช้สำหรับซิงค์ อย่าแก้ไข · แท็บที่เขียนให้: Leaderboard, Schedule, TopScorers, ประวัติการแข่งขัน (แชมป์), Teams, Seasons, Matches, Standings, TeamStats, AllTime (อ่านง่าย/ทำกราฟต่อได้ · แท็บเหล่านี้จะถูกเขียนทับทุกครั้งที่ส่ง ส่วนแท็บที่สร้างเองอย่าง Sheet5 จะไม่ถูกแตะ) และ Backup (ก้อนสำรองทั้งหมดสำหรับกู้คืน อย่าแก้ไข) · โลโก้ที่อัปโหลดเองจะไม่ถูกส่ง ให้เก็บด้วย Export JSON</p>
 <button class="btn secondary" onclick="copyScript()">📋 คัดลอกโค้ด Apps Script</button><textarea id="scriptText" class="input" readonly rows="6" style="margin-top:8px;font-size:11px"></textarea></details>
 </section>
 </main>
@@ -308,7 +311,7 @@ const DEFAULT_NAMES = ["น้อนไนท์","ตุงเป็นตั�
 const STORE="peLeague2026_v2";
 const MAX_SEASONS=48;
 const $=id=>document.getElementById(id);
-let syncing=false, syncTimer=null;
+let syncing=false, syncTimer=null, pendingSync=false;
 let logoDraft="", currentWeek=0, histYear="all", histOpen=null;
 function uid(){return "t"+Math.random().toString(36).slice(2,10)}
 
@@ -383,7 +386,7 @@ function normalizeState(x){
 }
 function loadState(){try{const x=normalizeState(JSON.parse(localStorage.getItem(STORE)||"null"));if(x)return x}catch(e){}return initialState()}
 let state=loadState();
-function saveState(){try{localStorage.setItem(STORE,JSON.stringify(state))}catch(e){alert("พื้นที่เก็บข้อมูลในเครื่องเต็ม กรุณา Export JSON สำรองไว้ก่อน");return}$("saveStatus").textContent="บันทึกแล้ว";setTimeout(()=>$("saveStatus").textContent="บันทึกข้อมูลในอุปกรณ์",1800);if(state.autoSync&&state.sheetUrl&&!syncing){clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncSheet(true),5000)}}
+function saveState(noSync){try{localStorage.setItem(STORE,JSON.stringify(state))}catch(e){alert("พื้นที่เก็บข้อมูลในเครื่องเต็ม กรุณา Export JSON สำรองไว้ก่อน");return}$("saveStatus").textContent="บันทึกแล้ว";setTimeout(()=>$("saveStatus").textContent="บันทึกข้อมูลในอุปกรณ์",1800);if(!noSync&&state.autoSync&&state.sheetUrl){if(syncing)pendingSync=true;else{clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncSheet(true),5000)}}}
 
 /* ---------- ตัวช่วยเรื่องปี / season ---------- */
 function season(){return state.seasons.find(s=>s.id===state.currentSeasonId)||state.seasons[0]}
@@ -727,17 +730,17 @@ $("logoFile").addEventListener("change",e=>{const f=e.target.files[0];if(!f)retu
 function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="PE-League-2026-backup.json";a.click();URL.revokeObjectURL(a.href);toast("ส่งออกข้อมูลแล้ว")}
 function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=normalizeState(JSON.parse(r.result));if(!d)throw Error("รูปแบบไฟล์ไม่ถูกต้อง");if(!confirm("นำเข้าข้อมูลจะเขียนทับข้อมูลปัจจุบัน ต้องการดำเนินการหรือไม่?"))return;state=d;histOpen=null;currentWeek=firstOpenWeek(season());saveState();renderAll();toast("นำเข้าข้อมูลสำเร็จ")}catch(err){alert("นำเข้าไม่สำเร็จ: "+err.message)}finally{e.target.value=""}};r.readAsText(f)}
 function downloadCSV(){const rows=[["อันดับ","ทีม","แข่ง","ชนะ","เสมอ","แพ้","ยิงได้","เสีย","ผลต่าง","แต้ม"],...standings().map((t,i)=>[i+1,t.name,t.played,t.w,t.d,t.l,t.gf,t.ga,t.gd,t.pts])];const csv="\ufeff"+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\r\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));a.download="PE-League-standings-"+season().year+"-S"+season().no+".csv";a.click();URL.revokeObjectURL(a.href);toast("ส่งออก CSV แล้ว")}
-const APPS_SCRIPT="/**\n * PE League 2026 - Google Sheets Sync (Apps Script Web App)\n * วิธีใช้: เปิด Google Sheet -> ส่วนขยาย -> Apps Script -> วางโค้ดนี้ -> Deploy เป็น Web app\n *   Execute as: Me   |   Who has access: Anyone\n * (ถ้าต้องการป้องกัน ให้ตั้ง SECRET แล้วกรอกรหัสเดียวกันในแอป)\n */\nvar SECRET = \"\"; // เช่น \"pe2026-abc\"  (เว้นว่าง = ไม่ใช้รหัส)\n\nfunction out_(o) {\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction doGet(e) {\n  var p = (e && e.parameter) || {};\n  if (SECRET && p.key !== SECRET) return out_({ ok: false, error: \"รหัสไม่ถูกต้อง\" });\n  if (p.action === \"pull\") return out_(pull_());\n  return out_({ ok: true, message: \"PE League sync พร้อมใช้งาน\" });\n}\n\nfunction doPost(e) {\n  try {\n    var body = JSON.parse(e.postData.contents);\n    if (SECRET && body.key !== SECRET) return out_({ ok: false, error: \"รหัสไม่ถูกต้อง\" });\n    if (body.action === \"push\") return out_(push_(body));\n    return out_({ ok: false, error: \"ไม่รู้จักคำสั่ง\" });\n  } catch (err) {\n    return out_({ ok: false, error: String(err) });\n  }\n}\n\nfunction sheet_(name) {\n  var ss = SpreadsheetApp.getActiveSpreadsheet();\n  return ss.getSheetByName(name) || ss.insertSheet(name);\n}\n\nfunction writeTable_(name, rows) {\n  var sh = sheet_(name);\n  sh.clearContents();\n  if (!rows || !rows.length) return;\n  var w = 1, i, j;\n  for (i = 0; i < rows.length; i++) if (rows[i].length > w) w = rows[i].length;\n  var vals = [];\n  for (i = 0; i < rows.length; i++) {\n    var a = rows[i].slice();\n    for (j = a.length; j < w; j++) a.push(\"\");\n    vals.push(a);\n  }\n  sh.getRange(1, 1, vals.length, w).setValues(vals);\n  sh.setFrozenRows(1);\n  sh.getRange(1, 1, 1, w).setFontWeight(\"bold\");\n}\n\nfunction push_(b) {\n  var names = [];\n  for (var n in b.tables) { writeTable_(n, b.tables[n]); names.push(n); }\n  // สำรองข้อมูลทั้งก้อน (แบ่งท่อนละ 40,000 ตัวอักษร เพราะ 1 เซลล์เก็บได้ไม่เกิน 50,000)\n  var s = b.backup || \"\", rows = [[\"part\", \"json\"]];\n  for (var i = 0; i < s.length; i += 40000) rows.push([rows.length - 1, s.slice(i, i + 40000)]);\n  writeTable_(\"Backup\", rows);\n  return { ok: true, updatedAt: new Date().toISOString(), sheets: names.concat([\"Backup\"]) };\n}\n\nfunction pull_() {\n  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(\"Backup\");\n  if (!sh) return { ok: false, error: \"ยังไม่มีข้อมูลสำรองในชีต (ให้กดส่งข้อมูลจากแอปก่อน)\" };\n  var v = sh.getDataRange().getValues().slice(1);\n  v.sort(function (a, b) { return a[0] - b[0]; });\n  var s = \"\";\n  for (var i = 0; i < v.length; i++) s += v[i][1];\n  return { ok: true, data: JSON.parse(s) };\n}\n";
+const APPS_SCRIPT="/**\n * PE League 2026 - Google Sheets Sync (Apps Script Web App)  v3.11\n * วิธีใช้: เปิด Google Sheet -> ส่วนขยาย -> Apps Script -> วางโค้ดนี้ (ทับของเดิมทั้งหมด) -> Deploy เป็น Web app\n *   Execute as: Me   |   Who has access: Anyone\n *   ถ้าแก้โค้ด ต้อง Deploy > Manage deployments > Edit > Version: New version ทุกครั้ง\n * (ถ้าต้องการป้องกัน ให้ตั้ง SECRET แล้วกรอกรหัสเดียวกันในแอป)\n *\n * v3.11: รองรับการใช้งานหลายเครื่อง (ซิงค์สองทาง)\n *   - เก็บ \"รหัสเวอร์ชันข้อมูล\" (rev) และไม่ยอมให้เครื่องที่ข้อมูลเก่าเขียนทับของใหม่\n *   - เก็บโลโก้ที่อัปโหลดเองไว้ในแท็บ Logos เพื่อให้ทุกเครื่องเห็นโลโก้ตรงกัน (อย่าแก้ไข)\n *\n * แท็บที่เขียนให้อัตโนมัติ:\n *   Leaderboard  ตารางคะแนนของ Season ปัจจุบัน\n *   Schedule     ตารางแข่งขันทุกสัปดาห์ ทุก Season (พร้อมผู้ชนะ/สถานะ)\n *   TopScorers   ดาวซัลโว / MVP / GK ยอดเยี่ยม ของแต่ละ Season\n *   ประวัติการแข่งขัน  แชมป์-รองแชมป์ของ Season ที่จบแล้ว (ชื่อแท็บตั้งได้ที่ TAB_NAMES)\n *   Teams, Seasons, Matches, Standings, TeamStats, AllTime\n *   Backup, Logos  ก้อนสำรองสำหรับซิงค์/กู้คืน (อย่าแก้ไข)\n * แท็บอื่นที่คุณสร้างเอง (เช่น Sheet5) จะไม่ถูกแตะต้อง\n */\nvar SECRET = \"\"; // เช่น \"pe2026-abc\"  (เว้นว่าง = ไม่ใช้รหัส)\nvar VERSION = \"3.11\";\n\n// ชื่อแท็บในชีต: ถ้าเปลี่ยนชื่อแท็บ ให้แก้ตรงนี้ (ซ้าย = ชื่อภายในที่แอปส่งมา, ขวา = ชื่อแท็บจริงในชีต)\nvar TAB_NAMES = {\n  \"Champions\": \"ประวัติการแข่งขัน\"\n};\n\nfunction out_(o) {\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction withLock_(fn) {\n  var lock = LockService.getScriptLock();\n  try { lock.waitLock(25000); } catch (e) { return { ok: false, error: \"ระบบกำลังบันทึกข้อมูลอยู่ ลองใหม่อีกครั้ง\" }; }\n  try { return fn(); } finally { lock.releaseLock(); }\n}\n\nfunction getRev_() { return PropertiesService.getScriptProperties().getProperty(\"rev\") || \"\"; }\n\nfunction hasBackup_() {\n  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(\"Backup\");\n  return !!sh && sh.getLastRow() > 1;\n}\n\nfunction doGet(e) {\n  var p = (e && e.parameter) || {};\n  if (SECRET && p.key !== SECRET) return out_({ ok: false, error: \"รหัสไม่ถูกต้อง\" });\n  if (p.action === \"meta\") return out_({ ok: true, version: VERSION, rev: getRev_(), hasData: hasBackup_() });\n  if (p.action === \"pull\") return out_(withLock_(pull_));\n  return out_({ ok: true, version: VERSION, message: \"PE League sync พร้อมใช้งาน\" });\n}\n\nfunction doPost(e) {\n  try {\n    var body = JSON.parse(e.postData.contents);\n    if (SECRET && body.key !== SECRET) return out_({ ok: false, error: \"รหัสไม่ถูกต้อง\" });\n    if (body.action === \"push\") return out_(withLock_(function () { return push_(body); }));\n    return out_({ ok: false, error: \"ไม่รู้จักคำสั่ง\" });\n  } catch (err) {\n    return out_({ ok: false, error: String(err) });\n  }\n}\n\nfunction sheet_(name) {\n  var ss = SpreadsheetApp.getActiveSpreadsheet();\n  return ss.getSheetByName(name) || ss.insertSheet(name);\n}\n\n// ขยายแผ่นงานให้พอดีกับข้อมูล (กันกรณีแถว/คอลัมน์ไม่พอ)\nfunction ensureSize_(sh, rows, cols) {\n  if (sh.getMaxRows() < rows) sh.insertRowsAfter(sh.getMaxRows(), rows - sh.getMaxRows());\n  if (sh.getMaxColumns() < cols) sh.insertColumnsAfter(sh.getMaxColumns(), cols - sh.getMaxColumns());\n}\n\n// เขียนตาราง (แถวแรก = หัวตาราง) คืนค่า \"จำนวนแถวข้อมูล\" ที่เขียนจริง\nfunction writeTable_(name, rows) {\n  var sh = sheet_(TAB_NAMES[name] || name);\n  sh.clearContents();\n  if (!rows || !rows.length) return 0;\n  var w = 1, i, j;\n  for (i = 0; i < rows.length; i++) if (rows[i].length > w) w = rows[i].length;\n  var vals = [];\n  for (i = 0; i < rows.length; i++) {\n    var a = rows[i].slice();\n    for (j = a.length; j < w; j++) a.push(\"\");\n    vals.push(a);\n  }\n  ensureSize_(sh, vals.length, w);\n  sh.getRange(1, 1, vals.length, w).setValues(vals);\n  sh.setFrozenRows(1);\n  sh.getRange(1, 1, 1, w).setFontWeight(\"bold\");\n  return vals.length - 1;\n}\n\nfunction push_(b) {\n  var cur = getRev_();\n  // กันเครื่องที่ข้อมูลเก่าเขียนทับของใหม่: baseRev ต้องตรงกับ rev ปัจจุบันของชีต (ยกเว้นสั่ง force)\n  if (!b.force && cur && b.baseRev !== cur) {\n    return { ok: false, conflict: true, rev: cur, version: VERSION };\n  }\n  var names = [], counts = {};\n  for (var n in b.tables) { counts[n] = writeTable_(n, b.tables[n]); names.push(TAB_NAMES[n] || n); }\n  // สำรองข้อมูลทั้งก้อน (แบ่งท่อนละ 40,000 ตัวอักษร เพราะ 1 เซลล์เก็บได้ไม่เกิน 50,000)\n  var s = b.backup || \"\", rows = [[\"part\", \"json\"]];\n  for (var i = 0; i < s.length; i += 40000) rows.push([rows.length - 1, s.slice(i, i + 40000)]);\n  writeTable_(\"Backup\", rows);\n  // โลโก้ที่อัปโหลดเอง (ส่งมาเฉพาะตอนที่มีการเปลี่ยน)\n  if (b.logos) {\n    var lr = [[\"id\", \"part\", \"data\"]];\n    for (var id in b.logos) {\n      var d = b.logos[id] || \"\", k = 0;\n      for (var p = 0; p < d.length; p += 40000) lr.push([id, k++, d.slice(p, p + 40000)]);\n    }\n    writeTable_(\"Logos\", lr);\n  }\n  if (b.rev) PropertiesService.getScriptProperties().setProperty(\"rev\", b.rev);\n  SpreadsheetApp.flush();\n  return { ok: true, version: VERSION, rev: b.rev || cur, updatedAt: new Date().toISOString(), sheets: names.concat([\"Backup\"]), counts: counts };\n}\n\nfunction pull_() {\n  var ss = SpreadsheetApp.getActiveSpreadsheet();\n  var sh = ss.getSheetByName(\"Backup\");\n  if (!sh) return { ok: false, error: \"ยังไม่มีข้อมูลสำรองในชีต (ให้กดส่งข้อมูลจากแอปก่อน)\" };\n  var v = sh.getDataRange().getValues().slice(1);\n  v.sort(function (a, b) { return a[0] - b[0]; });\n  var s = \"\";\n  for (var i = 0; i < v.length; i++) s += v[i][1];\n  var data = JSON.parse(s);\n  var logos = {}, ls = ss.getSheetByName(\"Logos\");\n  if (ls && ls.getLastRow() > 1) {\n    var lv = ls.getDataRange().getValues().slice(1);\n    lv.sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] - b[1]; });\n    for (var j = 0; j < lv.length; j++) logos[lv[j][0]] = (logos[lv[j][0]] || \"\") + lv[j][2];\n  }\n  return { ok: true, data: data, rev: getRev_() || data.rev || \"\", logos: logos };\n}\n";
 function sheetCfg(){const u=($("sheetUrl")?$("sheetUrl").value.trim():"")||state.sheetUrl||"";const k=($("sheetKey")?$("sheetKey").value.trim():state.sheetKey)||"";return {url:u,key:k}}
 function sheetNote(t){const n=$("sheetNote");if(n)n.textContent=t}
-function saveSheetUrl(){const c=sheetCfg();state.sheetUrl=c.url;state.sheetKey=c.key;saveState();sheetNote(c.url?"บันทึก URL แล้ว — กดส่งข้อมูลเพื่อส่งไป Google Sheets":"ยังไม่ได้ตั้งค่า URL");toast("บันทึกการตั้งค่า Google Sheets แล้ว")}
-function toggleAutoSync(v){state.autoSync=!!v;saveState();toast(v?"เปิดส่งอัตโนมัติ (ส่งหลังบันทึกข้อมูล ~5 วินาที)":"ปิดส่งอัตโนมัติ")}
+function saveSheetUrl(){const c=sheetCfg();state.sheetUrl=c.url;state.sheetKey=c.key;saveState();sheetNote(c.url?"บันทึก URL แล้ว — กดซิงค์ตอนนี้เพื่อเชื่อมกับ Google Sheets":"ยังไม่ได้ตั้งค่า URL");chip("idle");toast("บันทึกการตั้งค่า Google Sheets แล้ว")}
+function toggleAutoSync(v){state.autoSync=!!v;saveState();toast(v?"เปิดซิงค์อัตโนมัติ (ดึง+ส่ง ทุกครั้งที่เปิดแอปและหลังบันทึก)":"ปิดซิงค์อัตโนมัติ");if(v)syncSheet(true)}
 function cellv(v){return typeof v==="string"&&/^[=+\-@]/.test(v)?"'"+v:v}
 /* จัดข้อมูลเป็นตารางอ่านง่ายหลายแท็บ + ก้อนสำรองทั้งหมดสำหรับกู้คืน (โลโก้ที่อัปโหลดเองไม่ส่ง เพราะเซลล์ใหญ่เกินไป) */
-function sheetPayload(){
+function sheetPayload(rev){
  const presetOf=l=>{const i=PRESET_LOGOS.indexOf(l);return i<0?null:i};
- const slim=t=>({id:t.id,name:t.name,manager:t.manager||"",jersey:t.jersey||"",logoPreset:presetOf(t.logo),hasLogo:!!t.logo});
- const data={app:"PE League",version:"3.5",exportedAt:new Date().toISOString(),teams:state.teams.map(slim),deletedTeams:(state.deletedTeams||[]).map(t=>({...slim(t),deletedAt:t.deletedAt||null})),seasons:state.seasons,currentSeasonId:state.currentSeasonId};
+ const slim=t=>({...wireTeam(t),logoPreset:presetOf(t.logo),hasLogo:!!t.logo});
+ const data={app:"PE League",version:"3.11",rev:rev||"",exportedAt:new Date().toISOString(),teams:state.teams.map(slim),deletedTeams:(state.deletedTeams||[]).map(t=>({...slim(t),deletedAt:t.deletedAt||null})),seasons:state.seasons,currentSeasonId:state.currentSeasonId};
  const ss=[...state.seasons].sort((a,b)=>a.year-b.year||a.no-b.no);
  const st=s=>s.status==="finished"?"จบแล้ว":"กำลังแข่ง";
  const T={};
@@ -754,44 +757,210 @@ function sheetPayload(){
  const agg={};[...ss].reverse().filter(s=>s.status==="finished").forEach(s=>(s.finalTable||[]).forEach(r=>{const a=agg[r.id]||(agg[r.id]={name:team(r.id,s).name,n:0,p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0,c:0,r:0});a.n++;a.p+=r.played;a.w+=r.w;a.d+=r.d;a.l+=r.l;a.gf+=r.gf;a.ga+=r.ga;a.pts+=r.pts}));
  ss.filter(s=>s.status==="finished").forEach(s=>{if(s.champion&&agg[s.champion])agg[s.champion].c++;if(s.runner&&agg[s.runner])agg[s.runner].r++});
  T["AllTime"]=[["ทีม","ซีซั่นที่ลง","แข่ง","ชนะ","เสมอ","แพ้","ได้","เสีย","แต้ม","แชมป์","รองแชมป์"],...Object.values(agg).sort((a,b)=>b.c-a.c||b.r-a.r||b.pts-a.pts).map(a=>[a.name,a.n,a.p,a.w,a.d,a.l,a.gf,a.ga,a.pts,a.c,a.r])];
+  /* ---- แท็บอ้างอิงเพิ่มเติม: Leaderboard / Schedule / TopScorers / Champions ---- */
+  const cur=season();
+  T["Leaderboard"]=[["อันดับ","ชื่อผู้เล่น / ทีม","แข่ง","ชนะ","เสมอ","แพ้","ได้","เสีย","ผลต่าง","คะแนน"],...standings(cur).map((r,i)=>[i+1,r.name,r.played,r.w,r.d,r.l,r.gf,r.ga,r.gd,r.pts])];
+  T["Schedule"]=[["ปี","Season","สัปดาห์","นัดที่","ทีมเหย้า","ประตูเหย้า","ประตูเยือน","ทีมเยือน","ผู้ชนะ","สถานะ"]];
+  ss.forEach(s=>[...s.matches].sort((a,b)=>a.week-b.week||(+a.id.slice(1))-(+b.id.slice(1))).forEach(m=>{const ok=m.hs!==null&&m.hs!==undefined&&m.as!==null&&m.as!==undefined,hn=team(m.home,s).name,an=team(m.away,s).name;T["Schedule"].push([s.year,s.no,m.week,+m.id.slice(1),hn,ok?m.hs:"",ok?m.as:"",an,ok?(m.hs>m.as?hn:m.hs<m.as?an:"เสมอ"):"",ok?"จบ":"รอแข่ง"])}));
+  T["TopScorers"]=[["ปี","Season","ดาวซัลโว","สังกัด","ประตู","MVP","GK ยอดเยี่ยม","หมายเหตุ"],...ss.filter(s=>{const a=s.awards||{};return a.topScorer||a.mvp||a.bestGk||a.notes}).map(s=>{const a=s.awards||{};return [s.year,s.no,a.topScorer||"",a.topScorerTeam?team(a.topScorerTeam,s).name:"",a.topScorerGoals||"",a.mvp||"",a.bestGk||"",a.notes||""]})];
+  T["Champions"]=[["ปี","Season","แชมป์","รองแชมป์","แต้มแชมป์","จำนวนทีม","นัดที่แข่ง","จบเมื่อ"],...ss.filter(s=>s.status==="finished").map(s=>{const f=(s.finalTable||[]).find(r=>r.id===s.champion);return [s.year,s.no,s.champion?team(s.champion,s).name:"",s.runner?team(s.runner,s).name:"",f?f.pts:"",seasonTeams(s).length,playedOf(s).length,s.finishedAt?new Date(s.finishedAt).toISOString().slice(0,10):""]})];
  Object.keys(T).forEach(k=>T[k]=T[k].map(r=>r.map(cellv)));
  return {tables:T,backup:JSON.stringify(data)};
 }
+/* ========== ซิงค์สองทาง (ใช้หลายเครื่อง) ==========
+   - เก็บ "rev" ของชีต และ snapshot ของข้อมูลที่ซิงค์ล่าสุด (base) ไว้ในเครื่อง
+   - ก่อนส่งทุกครั้งจะดึงข้อมูลจากชีตมารวมก่อน (3-way merge) ไม่ส่งทับข้อมูลที่อีกเครื่องเพิ่งแก้
+   - แก้ต่างนัด/ต่างทีมกัน = รวมให้อัตโนมัติ · แก้จุดเดียวกัน = ถามผู้ใช้ */
+const SYNC_KEY="peLeague2026_sync",PREV_KEY="peLeague2026_prev";
+let syncMeta=(function(){const d={baseRev:"",baseSnap:"",pending:null};try{return Object.assign(d,JSON.parse(localStorage.getItem(SYNC_KEY)||"{}"))}catch(e){return d}})();
+let askDeclined=false;
+function saveSyncMeta(){try{localStorage.setItem(SYNC_KEY,JSON.stringify(syncMeta))}catch(e){}}
+function canon(x){if(Array.isArray(x))return x.map(canon);if(x&&typeof x==="object"){const o={};Object.keys(x).sort().forEach(k=>{if(x[k]!==undefined)o[k]=canon(x[k])});return o}return x}
+function ser(x){return JSON.stringify(canon(x===undefined?null:x))}
+function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)+"."+s.length}
+function newRev(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function normSeason(s){return Object.assign(mkSeason(s.year,s.no),s)}
+function wireTeam(t){
+ const l=t.logo||"";let k="",r="";
+ if(l){const pi=PRESET_LOGOS.indexOf(l);
+  if(pi>=0){k="preset";r=pi}
+  else{const dk=Object.keys(DEFAULT_LOGOS).find(n=>DEFAULT_LOGOS[n]===l);if(dk){k="default";r=dk}else{k="custom";r=hashStr(l)}}}
+ const o={id:t.id,name:t.name,manager:t.manager||"",jersey:t.jersey||"",logoKind:k,logoRef:r};
+ if(t.deletedAt)o.deletedAt=t.deletedAt;return o}
+function wireOf(st){st=st||state;return {teams:st.teams.map(wireTeam),deletedTeams:(st.deletedTeams||[]).map(wireTeam),seasons:st.seasons.map(normSeason)}}
+function core(d){return {teams:d.teams,deletedTeams:d.deletedTeams,seasons:d.seasons}}
+function normRemote(d){
+ const lt=new Map(state.teams.concat(state.deletedTeams||[]).map(t=>[t.id,wireTeam(t)]));
+ const nt=t=>{const o={id:t.id,name:t.name,manager:t.manager||"",jersey:t.jersey||""};
+  if(t.logoKind!==undefined){o.logoKind=t.logoKind;o.logoRef=t.logoRef}
+  else if(t.logoPreset!=null){o.logoKind="preset";o.logoRef=t.logoPreset}
+  else if(t.hasLogo&&lt.get(t.id)&&lt.get(t.id).logoKind){o.logoKind=lt.get(t.id).logoKind;o.logoRef=lt.get(t.id).logoRef}
+  else{o.logoKind="";o.logoRef=""}
+  if(t.deletedAt)o.deletedAt=t.deletedAt;return o};
+ return {teams:(d.teams||[]).map(nt),deletedTeams:(d.deletedTeams||[]).map(nt),seasons:(d.seasons||[]).map(normSeason),currentSeasonId:d.currentSeasonId}}
+function logosOf(){const o={};state.teams.concat(state.deletedTeams||[]).forEach(t=>{if(t.logo&&wireTeam(t).logoKind==="custom")o[t.id]=t.logo});return o}
+function resolveLogo(t,logos,local){
+ if(t.logoKind==="preset")return PRESET_LOGOS[t.logoRef]||"";
+ if(t.logoKind==="default")return DEFAULT_LOGOS[t.logoRef]||"";
+ if(t.logoKind==="custom"){const l=local.get(t.id);if(l&&hashStr(l)===t.logoRef)return l;const r=logos&&logos[t.id];if(r&&hashStr(r)===t.logoRef)return r;return l||r||""}
+ return ""}
+function buildState(M,logos,curId){
+ const local=new Map(state.teams.concat(state.deletedTeams||[]).map(t=>[t.id,t.logo||""]));
+ const fix=t=>({id:t.id,name:t.name,manager:t.manager||"",jersey:t.jersey||"ดำ",logo:resolveLogo(t,logos,local),...(t.deletedAt?{deletedAt:t.deletedAt}:{})});
+ return normalizeState({teams:M.teams.map(fix),deletedTeams:M.deletedTeams.map(fix),seasons:M.seasons,currentSeasonId:curId||state.currentSeasonId,sheetUrl:state.sheetUrl,sheetKey:state.sheetKey,autoSync:state.autoSync,lastSync:state.lastSync})}
+/* ---- 3-way merge ---- */
+function pick3(b,l,r){const sb=ser(b),sl=ser(l),sr=ser(r);if(sl===sr)return "l";if(sl===sb)return "r";if(sr===sb)return "l";return "x"}
+function mergeSeason(b,l,r){
+ if(!b||!l||!r)return null;
+ const keys=new Set([...Object.keys(l),...Object.keys(r),...Object.keys(b)]);keys.delete("matches");
+ const o={};
+ for(const k of keys){const p=pick3(b[k],l[k],r[k]);if(p==="x")return null;o[k]=p==="r"?r[k]:l[k]}
+ const p=pick3(b.matches,l.matches,r.matches);
+ if(p==="r")o.matches=r.matches;
+ else if(p==="l")o.matches=l.matches;
+ else{
+  const st=a=>ser(a.map(x=>[x.id,x.home,x.away,x.week])),bs=st(b.matches);
+  if(st(l.matches)!==bs||st(r.matches)!==bs)return null;
+  const out=[];
+  for(let i=0;i<l.matches.length;i++){const lm=l.matches[i],rm=r.matches[i],bm=b.matches[i];
+   const q=pick3({hs:bm.hs,as:bm.as},{hs:lm.hs,as:lm.as},{hs:rm.hs,as:rm.as});
+   if(q==="x")return null;out.push(q==="r"?rm:lm)}
+  o.matches=out}
+ return o}
+function mergeData(B,L,R,pref){
+ const conflicts=[];
+ const ent=d=>{const m=new Map();(d.teams||[]).forEach(t=>m.set(t.id,{t,del:false}));(d.deletedTeams||[]).forEach(t=>m.set(t.id,{t,del:true}));return m};
+ const eb=B?ent(B):new Map(),el=ent(L),er=ent(R);
+ const teams=[],deleted=[];
+ [...new Set([...el.keys(),...er.keys(),...eb.keys()])].forEach(id=>{
+  const b=eb.get(id),l=el.get(id),r=er.get(id),p=pick3(b,l,r);let v;
+  if(p==="l")v=l;else if(p==="r")v=r;
+  else{conflicts.push("ทีม "+((l&&l.t.name)||(r&&r.t.name)||id));v=pref==="remote"?r:l}
+  if(v)(v.del?deleted:teams).push(v.t)});
+ const sm=d=>new Map((d.seasons||[]).map(s=>[s.id,s]));
+ const sb=B?sm(B):new Map(),sl=sm(L),sr=sm(R),seasons=[];
+ [...new Set([...sl.keys(),...sr.keys(),...sb.keys()])].forEach(id=>{
+  const b=sb.get(id),l=sl.get(id),r=sr.get(id),p=pick3(b,l,r);let v;
+  if(p==="l")v=l;else if(p==="r")v=r;
+  else{v=mergeSeason(b,l,r);if(!v){const s=l||r||b;conflicts.push("ปี "+s.year+" · Season "+s.no);v=pref==="remote"?r:l}}
+  if(v)seasons.push(v)});
+ return {teams,deletedTeams:deleted,seasons,conflicts}}
+/* ---- ตัวช่วย UI ---- */
+function chip(kind,txt){
+ const e=$("syncChip");if(!e)return;
+ if(!state.sheetUrl){e.style.display="none";return}
+ e.style.display="";e.dataset.kind=kind;
+ const t=new Date().toTimeString().slice(0,5);
+ e.textContent=kind==="busy"?"☁️ กำลังซิงค์…":kind==="ok"?"☁️ ซิงค์แล้ว "+t:kind==="idle"?"☁️ ยังไม่ซิงค์":"⚠️ "+(txt||"ซิงค์ไม่สำเร็จ");
+ e.title=kind==="ok"?"ซิงค์ล่าสุด "+t+" · แตะเพื่อซิงค์ทันที":"แตะเพื่อซิงค์ทันที"}
+function isTyping(){const sh=$("scoreSheet");if(sh&&sh.classList.contains("open"))return true;const a=document.activeElement;return !!a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&!["sheetUrl","sheetKey","autoSync"].includes(a.id)}
+function savePrev(L){try{localStorage.setItem(PREV_KEY,JSON.stringify({at:Date.now(),data:core(L)}))}catch(e){}}
+async function gsGet(c,action){
+ const r=await fetch(c.url+(c.url.includes("?")?"&":"?")+"action="+action+"&key="+encodeURIComponent(c.key)+"&_="+Date.now());
+ return r.json()}
+async function gsPush(c,baseRev,rev,withLogos,force){
+ const p=sheetPayload(rev),body={action:"push",key:c.key,baseRev,rev,tables:p.tables,backup:p.backup};
+ if(force)body.force=true;
+ if(withLogos)body.logos=logosOf();
+ const opt={method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)};
+ try{const r=await fetch(c.url,opt);return await r.json()}
+ catch(e){if(e instanceof TypeError){await fetch(c.url,{...opt,mode:"no-cors"});return {ok:true,unverified:true}}throw e}}
+function needLogos(L,R){const lc=L.teams.concat(L.deletedTeams).filter(t=>t.logoKind==="custom");if(!lc.length)return false;if(!R)return true;const rm=new Map(R.teams.concat(R.deletedTeams).map(t=>[t.id,t]));return lc.some(t=>{const r=rm.get(t.id);return !r||r.logoKind!=="custom"||r.logoRef!==t.logoRef})}
+function afterPush(r,rev,L){
+ if(r.unverified)syncMeta.pending={rev,snap:ser(core(L))};
+ else{syncMeta.baseRev=rev;syncMeta.baseSnap=ser(core(L));syncMeta.pending=null}
+ saveSyncMeta()}
+/* ---- ตัวซิงค์หลัก: ดึง → รวม → ส่ง ---- */
 async function syncSheet(silent){
  const c=sheetCfg();
  if(!c.url){if(!silent)alert("กรุณาวาง Google Apps Script Web App URL ก่อน");return}
- state.sheetUrl=c.url;state.sheetKey=c.key;syncing=true;sheetNote("กำลังส่งข้อมูล…");
- const p=sheetPayload(),body=JSON.stringify({action:"push",key:c.key,tables:p.tables,backup:p.backup}),opt={method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body};
+ if(syncing){pendingSync=true;return}
+ if(!silent)askDeclined=false;
+ syncing=true;state.sheetUrl=c.url;state.sheetKey=c.key;chip("busy");if(!silent)sheetNote("กำลังซิงค์…");
+ let result="",info="";
  try{
-  try{
-   const r=await fetch(c.url,opt),j=await r.json();
-   if(!j.ok)throw Error(j.error||"ไม่ทราบสาเหตุ");
-   state.lastSync=Date.now();sheetNote("ส่งล่าสุด "+new Date().toLocaleString("th-TH-u-ca-gregory")+" · "+j.sheets.length+" แท็บ");if(!silent)toast("ส่งข้อมูลไป Google Sheets แล้ว");
-  }catch(e){
-   if(e instanceof TypeError){await fetch(c.url,{...opt,mode:"no-cors"});state.lastSync=Date.now();sheetNote("ส่งแล้ว แต่เบราว์เซอร์ไม่ให้อ่านผลตอบกลับ — กรุณาเปิดชีตตรวจสอบ ("+new Date().toLocaleString("th-TH-u-ca-gregory")+")");if(!silent)toast("ส่งแล้ว กรุณาตรวจสอบในชีต")}
-   else throw e;
-  }
+  for(let attempt=0;attempt<4&&!result;attempt++){
+   const meta=await gsGet(c,"meta");
+   if(!meta.ok)throw Error(meta.error||"ไม่ทราบสาเหตุ");
+   if(typeof meta.rev!=="string")throw Error("OLD_SCRIPT");
+   if(syncMeta.pending&&meta.rev===syncMeta.pending.rev){syncMeta.baseRev=meta.rev;syncMeta.baseSnap=syncMeta.pending.snap;syncMeta.pending=null;saveSyncMeta()}
+   const base=syncMeta.baseSnap?JSON.parse(syncMeta.baseSnap):null,L=wireOf();
+   const localChanged=!base||ser(core(L))!==ser(core(base)),remoteChanged=!base||meta.rev!==syncMeta.baseRev;
+   /* ชีตยังว่าง → ส่งขึ้นครั้งแรก */
+   if(!meta.hasData){const rev=newRev(),r=await gsPush(c,"",rev,true,true);if(!r.ok)throw Error(r.error||"ส่งไม่สำเร็จ");afterPush(r,rev,L);info=r;result="pushed";break}
+   /* ชีตไม่เปลี่ยน */
+   if(!remoteChanged){
+    if(!localChanged){result="same";break}
+    const rev=newRev(),r=await gsPush(c,syncMeta.baseRev,rev,needLogos(L,base)||!silent);
+    if(r.conflict)continue;if(!r.ok)throw Error(r.error||"ส่งไม่สำเร็จ");
+    afterPush(r,rev,L);info=r;result="pushed";break}
+   /* ชีตมีข้อมูลใหม่ → ดึงมารวม */
+   const pulled=await gsGet(c,"pull");if(!pulled.ok)throw Error(pulled.error||"ดึงข้อมูลไม่สำเร็จ");
+   const R=normRemote(pulled.data),remRev=pulled.rev||meta.rev;
+   if(ser(core(R))===ser(core(L))){syncMeta.baseRev=remRev;syncMeta.baseSnap=ser(core(L));syncMeta.pending=null;saveSyncMeta();result="same";break}
+   if(!base){
+    /* เครื่องนี้ยังไม่เคยซิงค์ แต่ข้อมูลต่างจากชีต → ถามครั้งเดียว */
+    if(askDeclined){result="declined";break}
+    if(isTyping()&&silent){result="deferred";break}
+    if(confirm("เครื่องนี้ยังไม่เคยซิงค์กับชีต และข้อมูลต่างจากในชีต\n\nตกลง = ใช้ข้อมูลจากชีต (ข้อมูลในเครื่องนี้จะถูกแทนที่)\nยกเลิก = ไม่ใช้ข้อมูลจากชีต")){
+     savePrev(L);state=buildState(core(R),pulled.logos,R.currentSeasonId);saveState(true);renderAll();
+     syncMeta.baseRev=remRev;syncMeta.baseSnap=ser(core(wireOf()));syncMeta.pending=null;saveSyncMeta();result="pulled";break}
+    if(confirm("ต้องการเขียนทับข้อมูลในชีตด้วยข้อมูลของเครื่องนี้ใช่หรือไม่?\n(ข้อมูลเดิมในชีตจะถูกแทนที่)")){
+     const rev=newRev(),r=await gsPush(c,remRev,rev,true,true);if(!r.ok)throw Error(r.error||"ส่งไม่สำเร็จ");afterPush(r,rev,L);info=r;result="pushed";break}
+    askDeclined=true;result="declined";break}
+   /* รวมข้อมูล 3 ทาง */
+   if(isTyping()&&silent){result="deferred";break}
+   let M=mergeData(core(base),core(L),core(R),null);
+   if(M.conflicts.length){
+    const useRemote=confirm("พบข้อมูลที่ถูกแก้ไขพร้อมกันทั้ง 2 เครื่อง:\n• "+M.conflicts.join("\n• ")+"\n\nตกลง = ใช้ข้อมูลจากชีต\nยกเลิก = ใช้ข้อมูลของเครื่องนี้\n(ส่วนที่ไม่ชนกันจะรวมให้อัตโนมัติ)");
+    M=mergeData(core(base),core(L),core(R),useRemote?"remote":"local")}
+   savePrev(L);
+   state=buildState(M,pulled.logos);saveState(true);
+   const mw=Math.max(1,...season().matches.map(m=>m.week));currentWeek=Math.max(0,Math.min(currentWeek,mw-1));
+   renderAll();
+   const L2=wireOf();
+   if(ser(core(L2))===ser(core(R))){syncMeta.baseRev=remRev;syncMeta.baseSnap=ser(core(L2));syncMeta.pending=null;saveSyncMeta();result="pulled";break}
+   const rev=newRev(),r=await gsPush(c,remRev,rev,needLogos(L2,R)||!silent);
+   if(r.conflict)continue;if(!r.ok)throw Error(r.error||"ส่งไม่สำเร็จ");
+   afterPush(r,rev,L2);info=r;result="merged"}
+  if(!result)throw Error("ข้อมูลเปลี่ยนแปลงบ่อยเกินไป ลองซิงค์อีกครั้ง");
+  state.lastSync=Date.now();
+  const now=new Date().toLocaleString("th-TH-u-ca-gregory");
+  let msg={same:"ข้อมูลตรงกับชีตแล้ว",pulled:"ดึงข้อมูลล่าสุดจากชีตแล้ว",merged:"รวมข้อมูลจากทั้ง 2 เครื่องและอัปเดตชีตแล้ว",pushed:"ส่งข้อมูลขึ้นชีตแล้ว",declined:"ยังไม่ได้ซิงค์ (กดซิงค์ตอนนี้เพื่อเลือกอีกครั้ง)",deferred:"กำลังพิมพ์อยู่ จะซิงค์ให้อีกครั้งในอีกสักครู่"}[result];
+  if(info&&info.sheets){const exp=sheetPayload("x").tables.Matches.length-1,got=info.counts&&info.counts.Matches;msg+=info.unverified?" (เบราว์เซอร์ไม่ให้อ่านผลตอบกลับ กรุณาตรวจชีต)":got===exp?" · ตรวจแล้ว: ตารางแข่งครบ "+exp+" นัด":" ⚠️ จำนวนนัดในชีต ("+got+") ไม่ตรงกับในแอป ("+exp+")"}
+  sheetNote("ซิงค์ล่าสุด "+now+" · "+msg);
+  chip(result==="declined"||result==="deferred"?"idle":"ok");
+  if(!silent)toast(msg);else if(result==="pulled"||result==="merged")toast("อัปเดตข้อมูลจากอีกเครื่องแล้ว");
  }catch(e){
-  sheetNote("ส่งไม่สำเร็จ: "+e.message);
-  if(!silent)alert("ส่งข้อมูลไม่สำเร็จ\nรายละเอียด: "+e.message+"\n\nตรวจสอบว่า Deploy เป็น Web app แบบ Anyone และใช้ URL ที่ลงท้ายด้วย /exec (ถ้าแก้โค้ดต้อง Deploy เวอร์ชันใหม่) หรือสำรองด้วย Export JSON");
- }
- saveState();syncing=false;
+  const old=e.message==="OLD_SCRIPT";
+  const m=old?"Apps Script ในชีตเป็นเวอร์ชันเก่า (ต้องเป็น v3.11 ขึ้นไป) — วางโค้ดใหม่แล้ว Deploy เป็น New version":"ซิงค์ไม่สำเร็จ: "+(e instanceof TypeError?"เชื่อมต่อไม่ได้ (ออฟไลน์?)":e.message);
+  sheetNote(m);chip("err",old?"อัปเดตสคริปต์":e instanceof TypeError?"ออฟไลน์":"ซิงค์ไม่สำเร็จ");
+  if(!silent)alert(m+"\n\nตรวจสอบว่า Deploy เป็น Web app แบบ Anyone และใช้ URL ที่ลงท้ายด้วย /exec (ถ้าแก้โค้ดต้อง Deploy เวอร์ชันใหม่) หรือสำรองด้วย Export JSON")}
+ saveState(true);syncing=false;
+ if(pendingSync){pendingSync=false;clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncSheet(true),1500)}
 }
+/* ดึงข้อมูลจากชีตมาแทนที่ข้อมูลในเครื่องนี้ทั้งหมด (บังคับ) */
 async function pullSheet(){
  const c=sheetCfg();
  if(!c.url){alert("กรุณาวาง Google Apps Script Web App URL ก่อน");return}
- if(!confirm("ดึงข้อมูลสำรองจาก Google Sheets มาแทนที่ข้อมูลในเครื่องนี้หรือไม่?\n(โลโก้ที่อัปโหลดเองจะคงไว้ตามทีมเดิมในเครื่อง ทีมที่ไม่เคยมีในเครื่องจะใช้โลโก้ตัวอย่างหรือว่าง)"))return;
+ if(!confirm("ดึงข้อมูลสำรองจาก Google Sheets มาแทนที่ข้อมูลในเครื่องนี้ทั้งหมดหรือไม่?\n(ปกติไม่ต้องกดปุ่มนี้ ใช้ \"ซิงค์ตอนนี้\" ซึ่งจะรวมข้อมูลให้อัตโนมัติ)"))return;
  try{
   sheetNote("กำลังดึงข้อมูล…");
-  const r=await fetch(c.url+(c.url.includes("?")?"&":"?")+"action=pull&key="+encodeURIComponent(c.key)),j=await r.json();
-  if(!j.ok)throw Error(j.error||"ไม่ทราบสาเหตุ");
-  const d=j.data,local=new Map([...state.teams,...(state.deletedTeams||[])].map(t=>[t.id,t.logo]));
-  const fix=t=>({id:t.id,name:t.name,manager:t.manager||"",jersey:t.jersey||"ดำ",logo:local.get(t.id)||(t.logoPreset!=null?PRESET_LOGOS[t.logoPreset]:"")||"",...(t.deletedAt?{deletedAt:t.deletedAt}:{})});
-  const nx=normalizeState({teams:d.teams.map(fix),deletedTeams:(d.deletedTeams||[]).map(fix),seasons:d.seasons,currentSeasonId:d.currentSeasonId,sheetUrl:c.url,sheetKey:c.key,autoSync:state.autoSync});
-  if(!nx)throw Error("ข้อมูลในชีตไม่ถูกต้อง");
-  state=nx;histOpen=null;currentWeek=firstOpenWeek(season());saveState();renderAll();sheetNote("ดึงข้อมูลสำเร็จ "+new Date().toLocaleString("th-TH-u-ca-gregory"));toast("ดึงข้อมูลจาก Google Sheets แล้ว");
- }catch(e){sheetNote("ดึงข้อมูลไม่สำเร็จ: "+e.message);alert("ดึงข้อมูลไม่สำเร็จ: "+e.message+"\n\nตรวจสอบ URL/รหัส และว่าเคยกดส่งข้อมูลจากแอปแล้ว")}
+  const j=await gsGet(c,"pull");if(!j.ok)throw Error(j.error||"ไม่ทราบสาเหตุ");
+  const R=normRemote(j.data);savePrev(wireOf());
+  state=buildState(core(R),j.logos,R.currentSeasonId);histOpen=null;currentWeek=firstOpenWeek(season());
+  syncMeta.baseRev=j.rev||"";syncMeta.baseSnap=ser(core(wireOf()));syncMeta.pending=null;saveSyncMeta();
+  saveState(true);renderAll();sheetNote("ดึงข้อมูลสำเร็จ "+new Date().toLocaleString("th-TH-u-ca-gregory"));chip("ok");toast("ดึงข้อมูลจาก Google Sheets แล้ว");
+ }catch(e){sheetNote("ดึงข้อมูลไม่สำเร็จ: "+e.message);alert("ดึงข้อมูลไม่สำเร็จ: "+e.message+"\n\nตรวจสอบ URL/รหัส และว่าเคยซิงค์จากแอปแล้ว")}
 }
+/* ซิงค์อัตโนมัติ: ตอนเปิดแอป · กลับมาที่แอป · กลับมาออนไลน์ · ทุก 30 วินาที */
+function startAutoSync(){
+ if(window._syncStarted)return;window._syncStarted=true;
+ const go=()=>{if(state.autoSync&&state.sheetUrl&&!document.hidden)syncSheet(true)};
+ chip("idle");setTimeout(go,1200);setInterval(go,30000);
+ document.addEventListener("visibilitychange",()=>{if(!document.hidden)go()});
+ window.addEventListener("online",go);window.addEventListener("focus",go)}
+
 function copyScript(){const ta=$("scriptText");ta.value=APPS_SCRIPT;ta.select();ta.setSelectionRange(0,999999);let ok=false;try{ok=document.execCommand("copy")}catch(e){}if(!ok&&navigator.clipboard)navigator.clipboard.writeText(APPS_SCRIPT).then(()=>toast("คัดลอกโค้ดแล้ว"),()=>toast("กดค้างที่กล่องข้อความแล้วเลือกคัดลอก"));else toast(ok?"คัดลอกโค้ดแล้ว":"กดค้างที่กล่องข้อความแล้วเลือกคัดลอก")}
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200)}
 function renderAll(){renderHome();renderLeaderboard();renderSchedule();renderHistory();renderAdmin()}
@@ -816,7 +985,7 @@ function renderThemeGrid(){
 function cycleTheme(){const ids=THEMES.map(t=>t.id),i=ids.indexOf(themePref());applyTheme(ids[(i+1)%ids.length])}
 if(window.matchMedia){const mq=matchMedia("(prefers-color-scheme: light)"),f=()=>{if(themePref()==="auto")applyTheme("auto",true)};mq.addEventListener?mq.addEventListener("change",f):mq.addListener&&mq.addListener(f)}
 
-function boot(){applyTheme(themePref(),true);syncSideToggle();const s=season();state.currentSeasonId=s.id;const bt=seasonTeams(s).map(t=>t.id);if(!s.matches.length&&s.status!=="finished"&&bt.length>=2){s.matches=makeSchedule(false,s.perWeek,s.format,bt)}currentWeek=firstOpenWeek(s);saveState();renderAll()}
+function boot(){startAutoSync();applyTheme(themePref(),true);syncSideToggle();const s=season();state.currentSeasonId=s.id;const bt=seasonTeams(s).map(t=>t.id);if(!s.matches.length&&s.status!=="finished"&&bt.length>=2){s.matches=makeSchedule(false,s.perWeek,s.format,bt)}currentWeek=firstOpenWeek(s);saveState();renderAll()}
 boot();
 
 </script>
