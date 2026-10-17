@@ -1,0 +1,5 @@
+PE League v36
+European club logos expanded to all current 2026/27 clubs in England Premier League (20), Italy Serie A (20), France Ligue 1 (18), Germany Bundesliga (18), Spain LaLiga (20).
+Total European clubs: 96.
+Assets: luukhopman/football-logos 2026/27 PNG set.
+Thai League set retained.
