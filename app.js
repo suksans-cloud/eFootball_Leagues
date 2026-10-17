@@ -408,7 +408,7 @@ function renderPickCat(){return;const el=$("pickCat");if(el)el.innerHTML=[["club
 function setPickCat(k){pickCat=k;renderPickCat()}
 function openTournamentPicker(cat){pickCat="club";renderPickCat();const el=$("tourPicker");if(el)el.classList.add("open")}
 function closeTournamentPicker(){const el=$("tourPicker");if(el)el.classList.remove("open")}
-function tournamentName(type){return type==="ucl"?"Champions League":type==="facup"?"FA Cup":"League"}
+function tournamentName(type){return type==="ucl"?"Champions League":"League"}
 function chooseTournament(type){
  closeTournamentPicker();
  const cat=pickCat;
@@ -419,7 +419,7 @@ function chooseTournament(type){
   if(!ids.length){alert("ยังไม่มีสโมสรในฐานข้อมูล กรุณาเพิ่มทีมที่หน้าตั้งค่าก่อน");showPage("settings");return}
   const cur=season(),year=cur?cur.year:(new Date()).getFullYear(),no=nextFreeNo(year,0);
   if(no===null){alert("ไม่สามารถสร้าง Season เพิ่มได้แล้ว");return}
-  target=mkSeason(year,no,{category:cat,teamIds:ids,perWeek:cur?cur.perWeek:6,format:cur?cur.format:"single",tournament:{type,phase:type==="ucl"?"group":type==="facup"?"knockout":"league",groups:[],round:""}});
+  target=mkSeason(year,no,{category:cat,teamIds:ids,perWeek:cur?cur.perWeek:6,format:cur?cur.format:"single",tournament:{type,phase:type==="ucl"?"group":"league",groups:[],round:""}});
   if(type==="league"&&ids.length>=2&&ids.length<=24)target.matches=makeSchedule(false,target.perWeek,target.format,ids);
   state.seasons.push(target);saveState();
  }
@@ -453,9 +453,13 @@ function renderHome(){
    const rows=standings(s).slice(0,5);
    $("homeTable").innerHTML=rows.map((t,i)=>`<tr onclick="openTeam('${t.id}')"><td><span class="rank">${i+1}</span></td><td><span class="mini-team">${logoImg(t)}<b>${esc(t.name)}</b></span></td><td>${t.played}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td><b>${t.pts}</b></td></tr>`).join("");
  }else{
-   if(homeTitle)homeTitle.textContent=type==="ucl"&&s.tournament.phase==="group"?"ตารางคะแนนรอบแบ่งกลุ่ม":"สายการแข่งขัน";
-   const note=type==="ucl"&&s.tournament.phase==="group"?"รายการ Champions League มีตารางแยกตามกลุ่ม":"รายการนี้ใช้ระบบน็อกเอาต์ ไม่มีตารางคะแนนสะสมแบบลีก";
-   $("homeTable").innerHTML=`<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">${esc(note)}<br><button class="btn secondary" style="margin-top:10px" onclick="showPage('leaderboard')">เปิด Leaderboard →</button></td></tr>`;
+   if(homeTitle)homeTitle.textContent=type==="ucl"&&s.tournament.phase==="league"?"UCL · League Phase":"UCL · Knockout phase";
+   if(type==="ucl"&&s.tournament.phase==="league"){
+     const rows=uclLeagueRows(s,s.teamIds||getRoster()).slice(0,8);
+     $("homeTable").innerHTML=rows.map((t,i)=>`<tr onclick="openTeam('${t.id}')"><td><span class="rank">${i+1}</span></td><td><span class="mini-team">${logoImg(t)}<b>${esc(t.name)}</b></span></td><td>${t.played}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td><b>${t.pts}</b></td></tr>`).join("")||`<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">ยังไม่มีข้อมูล League Phase</td></tr>`;
+   }else{
+     $("homeTable").innerHTML=`<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">รายการ Champions League อยู่ใน Knockout phase<br><button class="btn secondary" style="margin-top:10px" onclick="showPage('leaderboard')">เปิดสายการแข่งขัน →</button></td></tr>`;
+   }
  }
 }
 function leaderboardMatchCard(m,s){
@@ -466,21 +470,30 @@ function leaderboardGroupTable(s,g){
  const rows=groupRows(s,g.ids);
  return `<div class="tournament-group"><div class="tournament-group-head">${esc(g.name)} · ${g.ids.length} ทีม${s.tournament.phase==="group"?" · อันดับ 1–2 เข้ารอบ":""}</div><div class="card table-wrap"><table class="table static"><thead><tr><th>#</th><th>ทีม</th><th>แข่ง</th><th>ชนะ</th><th>เสมอ</th><th>แพ้</th><th>ได้</th><th>เสีย</th><th>GD</th><th>แต้ม</th></tr></thead><tbody>${rows.map((r,i)=>`<tr onclick="openTeam('${r.id}')"><td><span class="rank">${i+1}</span></td><td><span class="mini-team">${logoImg(team(r.id,s))}<b>${esc(r.name)}</b></span></td><td>${r.played}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gd>0?"+":""}${r.gd}</td><td><b>${r.pts}</b></td></tr>`).join("")||'<tr><td colspan="10">ยังไม่มีทีม</td></tr>'}</tbody></table></div></div>`;
 }
+function uclLeagueTableHTML(s){
+ const ids=s.teamIds||getRoster(),rows=uclLeagueRows(s,ids);
+ return `<div class="ucl-league-wrap"><div class="ucl-phase-note"><b>League Phase</b><span>36 ทีม · ทีมละ 8 นัด · รวม ${tMatches(s,"league").length} นัด</span></div><div class="card table-wrap"><table class="table ucl-table"><thead><tr><th>#</th><th>ทีม</th><th>แข่ง</th><th>ชนะ</th><th>เสมอ</th><th>แพ้</th><th>ได้</th><th>เสีย</th><th>GD</th><th>แต้ม</th><th>สถานะ</th></tr></thead><tbody>${rows.map((r,i)=>{const pos=i+1,st=pos<=8?"เข้ารอบ 16 ทีม":pos<=24?"Play-off":"ตกรอบ";return `<tr><td><b>${pos}</b></td><td><span class="mini-team">${logoImg(team(r.id,s))}<b>${esc(r.name)}</b></span></td><td>${r.played}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gd>0?"+":""}${r.gd}</td><td><b>${r.pts}</b></td><td><span class="ucl-status p${pos}">${st}</span></td></tr>`}).join("")||'<tr><td colspan="11">ยังไม่มีทีม</td></tr>'}</tbody></table></div></div>`;
+}
 function renderLeaderboard(){
  const s=season(),type=tourType(s),root=$("leaderboardContent");
- $("lbSub").textContent=(type==="ucl"?"UEFA Champions League · "+(s.tournament.phase==="group"?"ตารางคะแนนรอบแบ่งกลุ่ม":"สายการแข่งขันรอบน็อกเอาต์"):type==="facup"?"FA Cup · สายการแข่งขันแบบแพ้คัดออก":"ตารางคะแนนลีก")+" · "+seasonLabel(s)+(s.status==="finished"?" (จบแล้ว)":"");
- if(type==="league"){
-  const rows=standings();
-  root.innerHTML=`<div class="card table-wrap"><table class="table"><thead><tr><th>อันดับ</th><th>ทีม (กดดูประวัติ)</th><th>แข่ง</th><th>ชนะ</th><th>เสมอ</th><th>แพ้</th><th>ได้</th><th>เสีย</th><th>ผลต่าง</th><th>แต้ม</th></tr></thead><tbody>${rows.map((t,i)=>`<tr onclick="openTeam('${t.id}')"><td><span class="rank">${i+1}</span></td><td><span class="mini-team">${logoImg(t)}<b>${esc(t.name)}</b></span></td><td>${t.played}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td>${t.gf}</td><td>${t.ga}</td><td>${t.gd>0?"+":""}${t.gd}</td><td><b>${t.pts}</b></td></tr>`).join("")||'<tr><td colspan="10">ยังไม่มีทีม</td></tr>'}</tbody></table></div>`;
- }else if(type==="ucl"&&s.tournament.phase==="group"){
-  const groups=s.tournament.groups||[];
-  root.innerHTML=groups.length?groups.map(g=>leaderboardGroupTable(s,g)+`<div class="match-list">${tMatches(s,"group").filter(m=>m.group===g.name).map(m=>leaderboardMatchCard(m,s)).join("")||'<div class="empty">ยังไม่มีโปรแกรมกลุ่มนี้</div>'}</div>`).join(""):'<div class="empty">ยังไม่มีข้อมูลรอบแบ่งกลุ่ม</div>';
+ if(type==="ucl"){
+   const phase=s.tournament.phase;
+   $("lbSub").textContent="UEFA Champions League · "+(phase==="league"?"League Phase · 36 ทีม":"Knockout phase")+" · "+seasonLabel(s)+(s.status==="finished"?" (จบแล้ว)":"");
+   if(phase==="league") root.innerHTML=uclLeagueTableHTML(s); else {
+     const rounds=["Knockout Play-off","Round of 16","Quarter-final","Semi-final","Final"], all=tMatches(s,"knockout");
+     root.innerHTML=rounds.map(r=>{const ms=all.filter(m=>m.round===r);return ms.length?`<div class="tournament-round"><div class="tournament-round-head">🏆 ${esc(r)}</div><div class="match-list">${ms.map(m=>leaderboardMatchCard(m,s)).join("")}</div></div>`:""}).join("")||'<div class="empty">ยังไม่มีสายการแข่งขัน</div>';
+   }
+ }else if(type==="league"){
+   $("lbSub").textContent="ตารางคะแนนลีก · "+seasonLabel(s)+(s.status==="finished"?" (จบแล้ว)":"");
+   const rows=standings();
+   root.innerHTML=`<div class="card table-wrap"><table class="table"><thead><tr><th>อันดับ</th><th>ทีม (กดดูประวัติ)</th><th>แข่ง</th><th>ชนะ</th><th>เสมอ</th><th>แพ้</th><th>ได้</th><th>เสีย</th><th>ผลต่าง</th><th>แต้ม</th></tr></thead><tbody>${rows.map((t,i)=>`<tr onclick="openTeam('${t.id}')"><td><span class="rank">${i+1}</span></td><td><span class="mini-team">${logoImg(t)}<b>${esc(t.name)}</b></span></td><td>${t.played}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td>${t.gf}</td><td>${t.ga}</td><td>${t.gd>0?"+":""}${t.gd}</td><td><b>${t.pts}</b></td></tr>`).join("")||'<tr><td colspan="10">ยังไม่มีทีม</td></tr>'}</tbody></table></div>`;
  }else{
-  const rounds=[...new Set(tMatches(s,"knockout").map(m=>m.round))];
-  root.innerHTML=rounds.length?`<div class="tournament-bracket">${rounds.map(r=>`<div class="tournament-round"><div class="tournament-round-head">🏆 ${esc(r)}</div><div class="match-list">${tMatches(s,"knockout").filter(m=>m.round===r).map(m=>leaderboardMatchCard(m,s)).join("")}</div></div>`).join("")}</div>`:'<div class="empty">ยังไม่มีสายการแข่งขัน กรุณาสร้างโปรแกรมในหน้าตารางแข่ง</div>';
+   $("lbSub").textContent="FA Cup · สายการแข่งขันแบบแพ้คัดออก · "+seasonLabel(s);
+   const rounds=[...new Set(tMatches(s,"knockout").map(m=>m.round))];
+   root.innerHTML=rounds.length?`<div class="tournament-bracket">${rounds.map(r=>`<div class="tournament-round"><div class="tournament-round-head">🏆 ${esc(r)}</div><div class="match-list">${tMatches(s,"knockout").filter(m=>m.round===r).map(m=>leaderboardMatchCard(m,s)).join("")}</div></div>`).join("")}</div>`:'<div class="empty">ยังไม่มีสายการแข่งขัน กรุณาสร้างโปรแกรมในหน้าตารางแข่ง</div>';
  }
  const played=s.matches.filter(m=>m.hs!==null&&m.as!==null).slice(-5).reverse();
- $("recentResults").innerHTML=played.length?played.map(m=>`<div class="match"><div class="match-side home">${logoImg(team(m.home,s))}<b>${esc(team(m.home,s).name)}</b></div><div class="vs"><b>${m.hs} - ${m.as}</b><br><small>${esc(m.group?m.group+" · ":"")}${esc(m.round||("สัปดาห์ "+m.week))}</small></div><div class="match-side away">${logoImg(team(m.away,s))}<b>${esc(team(m.away,s).name)}</b></div></div>`).join(""):'<div class="empty">ยังไม่มีผลการแข่งขันที่บันทึกแล้ว</div>';
+ $("recentResults").innerHTML=played.length?played.map(m=>`<div class="match"><div class="match-side home">${logoImg(team(m.home,s))}<b>${esc(team(m.home,s).name)}</b></div><div class="vs"><b>${m.hs} - ${m.as}</b><br><small>${esc(m.group?m.group+" · ":"")}${esc(m.round||( "สัปดาห์ "+m.week))}</small></div><div class="match-side away">${logoImg(team(m.away,s))}<b>${esc(team(m.away,s).name)}</b></div></div>`).join(""):'<div class="empty">ยังไม่มีผลการแข่งขันที่บันทึกแล้ว</div>';
 }
 function openTeam(id){const t=team(id),s=statsFor(id),matches=season().matches.filter(m=>m.home===id||m.away===id).sort((a,b)=>a.week-b.week);$("teamDetailContent").innerHTML=`<div class="card"><div class="detail-head">${logoImg(t)}<div><h2>${esc(t.name)}</h2><p>${esc(seasonLabel(season()))} · ${s.played} นัดที่แข่งแล้ว</p></div></div><div class="stats"><div class="stat"><span class="label">คะแนน</span><strong>${s.pts}</strong></div><div class="stat"><span class="label">ชนะ / เสมอ / แพ้</span><strong>${s.w}/${s.d}/${s.l}</strong></div><div class="stat"><span class="label">ได้-เสีย</span><strong>${s.gf}-${s.ga}</strong></div></div><div class="section-title"><h2>ประวัติการแข่งขันทั้งหมด</h2></div><div class="table-wrap"><table class="table static"><thead><tr><th>สัปดาห์</th><th>คู่แข่งขัน</th><th>ผล</th><th>สถานะ</th></tr></thead><tbody>${matches.map(m=>{let home=m.home===id,opp=team(home?m.away:m.home),score=m.hs===null?"-":home?m.hs+" - "+m.as:m.as+" - "+m.hs;return `<tr><td>${m.week}</td><td>${home?"เหย้า":"เยือน"} vs ${esc(opp.name)}</td><td><b>${score}</b></td><td>${m.hs===null?'<span class="pill">รอแข่ง</span>':'จบการแข่งขัน'}</td></tr>`}).join("")||'<tr><td colspan="4">ยังไม่มีโปรแกรม</td></tr>'}</tbody></table></div></div>`;showPage("teamDetail")}
 
@@ -1059,70 +1072,103 @@ if(window.matchMedia){const mq=matchMedia("(prefers-color-scheme: light)"),f=()=
 
 /* ============================================================
    TOURNAMENT ENGINE
-   3 modes: League / UCL / FA Cup
-   UCL: 4-team groups, home/away; top 2 advance to single-match KO.
-   FA Cup: single-match knockout, automatic byes for non-power-of-two.
+   2 modes: League / UCL
+   UCL: configurable groups + home/away; top 2 per group advance to KO.
    ============================================================ */
-function tourType(s){return (s&&s.tournament&&s.tournament.type)||"league"}
-function tourName(t){return t==="ucl"?"UCL":t==="facup"?"FA Cup":"League"}
+function tourType(s){const t=(s&&s.tournament&&s.tournament.type)||"league";return t==="ucl"?"ucl":"league"}
+function tourName(t){return t==="ucl"?"UCL":"League"}
+function uclTeamCount(){return getRoster().length}
+function uclDefaultGroupCount(n){
+  if(n<4)return 0;
+  // ค่าเริ่มต้นที่ใช้ง่ายสำหรับทีมจำนวนน้อย แต่ยังเปิดให้ผู้ใช้เปลี่ยนเองได้
+  if(n<=6)return 1;
+  if(n<=10)return 2;
+  if(n<=20)return 4;
+  if(n<=32)return 8;
+  return Math.min(16,Math.floor(n/2));
+}
+function uclBalancedSizes(n,g){
+  const base=Math.floor(n/g),rem=n%g,arr=[];
+  for(let i=0;i<g;i++)arr.push(base+(i<rem?1:0));
+  return arr;
+}
+function uclGetGroupSizes(n){
+  const g=Math.max(1,Number($("uclGroupCount")?.value||uclDefaultGroupCount(n)||1));
+  const vals=[...document.querySelectorAll("#uclGroupSizes .ucl-size")].map(e=>Number(e.value)||0);
+  return vals.length===g?vals:uclBalancedSizes(n,g);
+}
+function renderUCLGroupConfig(){
+  const box=$("uclGroupConfig"), sel=$("uclGroupCount"), wrap=$("uclGroupSizes"), total=$("uclTeamTotal"), note=$("uclGroupNote");
+  if(!box||!sel||!wrap)return;
+  const n=uclTeamCount();
+  total.textContent=n;
+  if(n<4){box.hidden=true;return}
+  box.hidden=false;
+  const max=Math.min(16,Math.floor(n/2));
+  const old=Number(sel.value)||uclDefaultGroupCount(n)||1;
+  sel.innerHTML=Array.from({length:max},(_,i)=>`<option value="${i+1}">${i+1} สาย</option>`).join("");
+  sel.value=String(Math.min(Math.max(1,old),max));
+  const g=Number(sel.value),sizes=uclGetGroupSizes(n);
+  const safeSizes=(sizes.length===g&&sizes.every(x=>x>=2)&&sizes.reduce((a,b)=>a+b,0)===n)?sizes:uclBalancedSizes(n,g);
+  wrap.innerHTML=safeSizes.map((v,i)=>`<div class="ucl-group-size-row"><label>สาย ${String.fromCharCode(65+i)}</label><select class="select ucl-size" data-group="${i}">${Array.from({length:n-2*(g-1)},(_,j)=>j+2).map(x=>`<option value="${x}" ${x===v?'selected':''}>${x} ทีม</option>`).join("")}</select></div>`).join("");
+  // ปรับตัวเลือกของแต่ละสายให้เหลือเฉพาะค่าที่ทำให้รวมกันได้พอดีแบบง่ายและไม่บังคับลำดับ
+  [...wrap.querySelectorAll('.ucl-size')].forEach((el,i)=>el.onchange=()=>{
+    const current=[...wrap.querySelectorAll('.ucl-size')].map(x=>Number(x.value));
+    let sum=current.reduce((a,b)=>a+b,0);
+    if(sum!==n){
+      let delta=n-sum;
+      for(let j=current.length-1;j>=0&&delta!==0;j--){
+        const min=2,maxSize=n-2*(g-1);
+        if(delta>0){const add=Math.min(delta,maxSize-current[j]);current[j]+=add;delta-=add}
+        else {const sub=Math.min(-delta,current[j]-min);current[j]-=sub;delta+=sub}
+      }
+      [...wrap.querySelectorAll('.ucl-size')].forEach((x,j)=>x.value=String(current[j]));
+    }
+    const vals=[...wrap.querySelectorAll('.ucl-size')].map(x=>Number(x.value));
+    const ok=vals.length===g&&vals.every(x=>x>=2)&&vals.reduce((a,b)=>a+b,0)===n;
+    note.textContent=ok?`รวม ${vals.reduce((a,b)=>a+b,0)} ทีม · ${g} สาย · สายละ ${Math.min(...vals)}–${Math.max(...vals)} ทีม · อันดับ 1–2 ของแต่ละสายเข้ารอบ Knockout`:`จำนวนทีมยังไม่ครบ: ต้องรวมให้ได้ ${n} ทีม`;
+  });
+  const vals=[...wrap.querySelectorAll('.ucl-size')].map(x=>Number(x.value));
+  note.textContent=`รวม ${vals.reduce((a,b)=>a+b,0)} ทีม · ${g} สาย · อันดับ 1–2 ของแต่ละสายเข้ารอบ Knockout`;
+}
 function onTournamentTypeChange(v){
  const rule=$("tournamentRule"),help=$("tournamentHelp");if(!rule||!help)return;
- if(v==="ucl"){rule.textContent="ขั้นต่ำ 4 ทีม · แบ่งกลุ่มอัตโนมัติ · เหย้า-เยือน · อันดับ 1-2 เข้ารอบ Knockout · นัดชิงเกมเดียว";help.textContent="UCL: รองรับ 4–64 ทีม ระบบจะแบ่งกลุ่มให้อัตโนมัติ เช่น 6 ทีม = 2 กลุ่ม × 3 ทีม, 8 ทีม = 2 กลุ่ม × 4 ทีม แล้วจัด Knockout ต่อจนถึงนัดชิง"}
- else if(v==="facup"){rule.textContent="Knockout เกมเดียวทุกนัด · เสมอให้ตัดสินผู้ชนะก่อนเข้ารอบ";help.textContent="FA Cup: จับคู่แบบ Knockout เกมเดียว หากจำนวนทีมไม่ลงตัว ระบบให้ทีมที่เหลือผ่านเข้ารอบอัตโนมัติ"}
- else{rule.textContent="พบกัน 1 ครั้ง หรือเหย้า-เยือน ตามตัวเลือกด้านล่าง";help.textContent="League: ใช้ระบบเดิมของแอป ทั้งตารางคะแนน สถิติ และประวัติการแข่งขัน"}
+ if(v==="ucl"){
+   rule.textContent="League Phase แบบแบ่งสาย · เหย้า-เยือน · อันดับ 1–2 ของแต่ละสายเข้ารอบ Knockout";
+   help.textContent="UCL แบบยืดหยุ่น: เลือกจำนวนสายได้ และกำหนดจำนวนทีมของแต่ละสายเอง โดยแต่ละสายต้องมีอย่างน้อย 2 ทีม";
+   renderUCLGroupConfig();
+ }else{
+   rule.textContent="พบกัน 1 ครั้ง หรือเหย้า-เยือน ตามตัวเลือกด้านล่าง";
+   help.textContent="League: ใช้ระบบเดิมของแอป ทั้งตารางคะแนน สถิติ และประวัติการแข่งขัน";
+   if($("uclGroupConfig"))$("uclGroupConfig").hidden=true;
+ }
 }
 function syncTournamentUI(){
  const s=season(),e=$("tournamentType");if(e){e.value=tourType(s);onTournamentTypeChange(e.value)}
 }
 function tMatches(s,phase){return (s.matches||[]).filter(m=>!phase||m.phase===phase)}
 function mkTMatch(id,home,away,week,extra){return Object.assign({id,home,away,week,hs:null,as:null,phase:"knockout",round:"",group:"",slot:0,winner:null},extra||{})}
-function clearTournament(s){
- s.matches=[];s.tournament={type:tourType(s),phase:"",groups:[],round:""};s.champion="";s.runner="";s.finalTable=null;
-}
+function clearTournament(s){s.matches=[];s.tournament={type:tourType(s),phase:"",groups:[],round:""};s.champion="";s.runner="";s.finalTable=null}
 function shuffleArr(a){return [...a].sort(()=>Math.random()-.5)}
 function rrSchedule(ids,group){
  let arr=[...ids],out=[];if(arr.length%2)arr.push(null);let n=arr.length;
  for(let r=0;r<n-1;r++){for(let i=0;i<n/2;i++){let a=arr[i],b=arr[n-1-i];if(a&&b){out.push({home:r%2?a:b,away:r%2?b:a,group})}}arr=[arr[0],arr[n-1],...arr.slice(1,n-1)]}
- const first=[...out],second=first.map(m=>({home:m.away,away:m.home,group:m.group}));
- return first.concat(second)
-}
-function uclGroupCount(n){
- // รองรับจำนวนทีมยืดหยุ่น โดยให้จำนวนกลุ่มเป็น 1/2/4/8/16
- // เพื่อให้ 2 อันดับแรกของแต่ละกลุ่มเข้าสู่ Knockout ได้พอดี
- if(n<=5)return 1;
- if(n<=10)return 2;
- if(n<=20)return 4;
- if(n<=40)return 8;
- return 16;
+ const first=[...out],second=first.map(m=>({home:m.away,away:m.home,group:m.group}));return first.concat(second)
 }
 function createUCL(s,ids){
  if(ids.length<4){alert("UCL ต้องมีอย่างน้อย 4 ทีม");return false}
  if(ids.length>64){alert("UCL รองรับสูงสุด 64 ทีม");return false}
- const groupCount=uclGroupCount(ids.length),groups=Array.from({length:groupCount},()=>[]);
- // กระจายทีมแบบ snake เพื่อให้แต่ละกลุ่มมีจำนวนใกล้เคียงกันที่สุด
- shuffleArr(ids).forEach((id,i)=>{
-   const cycle=Math.floor(i/groupCount),pos=i%groupCount;
-   const gi=cycle%2===0?pos:groupCount-1-pos;
-   groups[gi].push(id);
- });
+ const n=ids.length,sel=$("uclGroupCount");
+ let groupCount=Math.max(1,Math.min(Math.floor(n/2),Number(sel?.value)||uclDefaultGroupCount(n)||1));
+ let sizes=uclGetGroupSizes(n);
+ if(sizes.length!==groupCount||sizes.some(x=>x<2)||sizes.reduce((a,b)=>a+b,0)!==n){sizes=uclBalancedSizes(n,groupCount)}
+ const pool=shuffleArr(ids),groups=[];let at=0;
+ for(let i=0;i<groupCount;i++){groups.push(pool.slice(at,at+sizes[i]));at+=sizes[i]}
  let matches=[],seq=1;
- groups.forEach((g,gi)=>rrSchedule(g,"Group "+String.fromCharCode(65+gi)).forEach(x=>{
-   matches.push(mkTMatch("m"+seq++,x.home,x.away,Math.floor((matches.length)/6)+1,{phase:"group",round:"Group Stage",group:x.group,slot:gi}));
- }));
+ groups.forEach((g,gi)=>rrSchedule(g,"Group "+String.fromCharCode(65+gi)).forEach(x=>matches.push(mkTMatch("m"+seq++,x.home,x.away,Math.floor(matches.length/6)+1,{phase:"group",round:"Group Stage",group:x.group,slot:gi}))));
  s.matches=matches;
- s.tournament={type:"ucl",phase:"group",groups:groups.map((ids,i)=>({name:"Group "+String.fromCharCode(65+i),ids})),round:"Group Stage"};
+ s.tournament={type:"ucl",phase:"group",groups:groups.map((ids,i)=>({name:"Group "+String.fromCharCode(65+i),ids})),round:"Group Stage",groupSizes:sizes,groupCount};
  return true;
-}
-function createFACup(s,ids){
- let list=shuffleArr(ids),matches=[],seq=1;
- const pow=2**Math.ceil(Math.log2(list.length)),byes=pow-list.length;
- const bye=list.splice(0,byes),pairs=[];
- bye.forEach(id=>pairs.push([id,null]));
- for(let i=0;i<list.length;i+=2)pairs.push([list[i],list[i+1]]);
- const round=pow===2?"Final":pow===4?"Semi-final":pow===8?"Quarter-final":pow===16?"Round of 16":"Round of "+pow;
- pairs.forEach(p=>{if(p[1])matches.push(mkTMatch("m"+seq++,p[0],p[1],Math.floor(matches.length/6)+1,{phase:"knockout",round,slot:matches.length}));else matches.push(mkTMatch("m"+seq++,p[0],null,Math.floor(matches.length/6)+1,{phase:"knockout",round,slot:matches.length,winner:p[0],hs:0,as:0,bye:true}))});
- s.matches=matches;s.tournament={type:"facup",phase:"knockout",groups:[],round};
- autoAdvanceByes(s);return true;
 }
 function createTournamentSchedule(){
  const s=season(),type=$("tournamentType")?$("tournamentType").value:"league",ids=getRoster();
@@ -1133,7 +1179,7 @@ function createTournamentSchedule(){
  s.teamIds=ids;s.tournament={type,phase:"",groups:[],round:""};s.matches=[];s.champion="";s.runner="";s.finalTable=null;
  if(type==="league"){const c=cfg();s.format=c.format;s.perWeek=c.perWeek;s.matches=makeSchedule(true,s.perWeek,s.format,ids);s.tournament.phase="league"}
  else if(type==="ucl"){if(!createUCL(s,ids))return}
- else if(type==="facup"){createFACup(s,ids)}
+ 
  saveState();gotoSeason(s.id);showPage("schedule");toast("สร้าง "+tourName(type)+" · "+s.matches.length+" นัดแล้ว");
 }
 function tourStandings(s,ids){return calcTable(s,ids.map(id=>team(id,s)))}
@@ -1141,29 +1187,39 @@ function allPhasePlayed(s,phase){const a=tMatches(s,phase);return a.length>0&&a.
 function groupRows(s,gids){return calcTable({matches:tMatches(s,"group").filter(m=>gids.includes(m.home)||gids.includes(m.away))},gids.map(id=>team(id,s)))}
 function advanceUCL(s){
  if(s.tournament.phase!=="group"||!allPhasePlayed(s,"group"))return false;
- const qualified=[];
- for(const g of s.tournament.groups){
-   const rows=groupRows(s,g.ids);rows.slice(0,2).forEach(r=>qualified.push(r.id));
- }
- let pairs=[],seq=s.matches.length+1;
- // deterministic draw: group winners face another group's runner-up, with a fallback rotation
- const winners=s.tournament.groups.map(g=>groupRows(s,g.ids)[0].id);
- const runners=s.tournament.groups.map(g=>groupRows(s,g.ids)[1].id);
- if(winners.length===1){
-   // มีเพียง 1 กลุ่ม: อันดับ 1 พบอันดับ 2 ในรอบชิงทันที
-   pairs.push([winners[0],runners[0]]);
- }else{
-   // ตั้งคู่แบบแชมป์กลุ่มพบรองแชมป์จากอีกกลุ่ม
+ const winners=[],runners=[];
+ for(const g of s.tournament.groups){const rows=groupRows(s,g.ids);if(rows.length<2)continue;winners.push(rows[0].id);runners.push(rows[1].id)}
+ let qualified=[...winners,...runners];
+ if(qualified.length<2){alert("ต้องมีอย่างน้อย 2 ทีมที่ผ่านเข้ารอบ Knockout");return false}
+ // จัดคู่แบบแชมป์สายพบรองแชมป์สายอื่นก่อน หากจำนวนไม่ลงตัวให้เติม BYE เพื่อให้เป็น bracket มาตรฐาน
+ let pairs=[];
+ if(qualified.length===2){pairs=[[qualified[0],qualified[1]]]}
+ else{
    for(let i=0;i<winners.length;i++){
-     let wi=winners[i],ri=runners[(i+1)%runners.length];
-     if(wi===ri)ri=runners[(i+2)%runners.length];
-     pairs.push([wi,ri]);
+     let ri=runners[(i+1)%runners.length];
+     if(winners[i]===ri)ri=runners[(i+2)%runners.length];
+     if(ri)pairs.push([winners[i],ri]);
    }
+   // ถ้าจำนวนคู่มากกว่ารอบแรกที่ต้องการ ให้คงคู่ที่สร้างไว้และเติมทีมที่เหลือ
+   const used=new Set(pairs.flat().filter(Boolean));
+   qualified.filter(id=>!used.has(id)).forEach(id=>{const p=pairs.find(x=>!x[1]);if(p)p[1]=id;else pairs.push([id,null])});
  }
- const round=pairs.length===1?"Final":pairs.length===2?"Semi-final":pairs.length===4?"Quarter-final":pairs.length===8?"Round of 16":"Round of "+(pairs.length*2);
- pairs=pairs.sort(()=>Math.random()-.5);
- pairs.forEach((p,i)=>s.matches.push(mkTMatch("m"+seq++,p[0],p[1],Math.floor((s.matches.length)/6)+1,{phase:"knockout",round,slot:i})));
- s.tournament.phase="knockout";s.tournament.round=round;saveState();toast("UCL: เข้าสู่ "+round+" แล้ว");return true;
+ // ทำให้จำนวนช่องเป็นกำลังสอง: คู่ที่ไม่มีคู่แข่งคือ BYE
+ let slots=1;while(slots<qualified.length)slots*=2;
+ const byeCount=slots-pairs.length;
+ for(let i=0;i<byeCount;i++)pairs.push([null,null]);
+ // เติม/ปรับ BYE ให้แต่ละคู่มีทีมอย่างน้อยหนึ่งทีม
+ const flat=pairs.flat().filter(Boolean),need=qualified.filter(id=>!flat.includes(id));
+ let ni=0;
+ for(let i=0;i<pairs.length&&ni<need.length;i++){if(!pairs[i][0]&&!pairs[i][1]){pairs[i]=[need[ni++],null]}}
+ const round=slots===2?"Final":slots===4?"Semi-final":slots===8?"Quarter-final":slots===16?"Round of 16":"Round of "+slots;
+ pairs=pairs.filter(p=>p[0]||p[1]).sort(()=>Math.random()-.5);
+ const seq=s.matches.length+1;
+ pairs.forEach((p,i)=>{
+   if(p[0]&&p[1])s.matches.push(mkTMatch("m"+(seq+i),p[0],p[1],Math.floor(s.matches.length/6)+1,{phase:"knockout",round,slot:i}));
+   else if(p[0]||p[1])s.matches.push(mkTMatch("m"+(seq+i),p[0]||p[1],null,Math.floor(s.matches.length/6)+1,{phase:"knockout",round,slot:i,winner:p[0]||p[1],hs:0,as:0,bye:true}));
+ });
+ s.tournament.phase="knockout";s.tournament.round=round;autoAdvanceByes(s);saveState();toast("UCL: เข้าสู่ "+round+" แล้ว");return true;
 }
 function autoAdvanceByes(s){
  let changed=true;
@@ -1191,7 +1247,7 @@ function resolveDraw(m,s){
  return true;
 }
 function applyTournamentResult(m,s){
- if(m.phase==="group")return;
+ if(m.phase==="group"||m.phase==="league")return;
  if(m.hs===null||m.as===null)return;
  if(m.hs>m.as)m.winner=m.home;else if(m.as>m.hs)m.winner=m.away;else resolveDraw(m,s);
 }
@@ -1199,7 +1255,7 @@ function tournamentAdvance(s){
  if(tourType(s)==="ucl"){
    if(s.tournament.phase==="group")advanceUCL(s);
    else nextKORound(s);
- }else if(tourType(s)==="facup"){nextKORound(s)}
+ }
 }
 function tournamentMatchLabel(m){return m.phase==="group"?m.group+" · "+m.round:m.round}
 function matchRow(m,s,fin){
@@ -1211,30 +1267,26 @@ function matchRow(m,s,fin){
 function renderTournamentSchedule(s){
  const fin=s.status==="finished";
  $("weekNav").style.display="none";$("schFilterBar").innerHTML="";
- const groups=s.tournament.phase==="group"?s.tournament.groups:[];
- const htmlParts=[];
- if(s.tournament.phase==="group"){
-   groups.forEach(g=>{
-     const ms=tMatches(s,"group").filter(m=>m.group===g.name);
-     const rows=groupRows(s,g.ids);
-     htmlParts.push(`<div class="tournament-group"><div class="tournament-group-head">${esc(g.name)} · ${g.ids.length} ทีม · อันดับ 1-2 เข้ารอบ</div><div class="card table-wrap"><table class="table"><thead><tr><th>#</th><th>ทีม</th><th>แข่ง</th><th>ชนะ</th><th>เสมอ</th><th>แพ้</th><th>ได้</th><th>เสีย</th><th>GD</th><th>แต้ม</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${r.played}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gd}</td><td><b>${r.pts}</b></td></tr>`).join("")}</tbody></table></div><div class="match-list">${ms.map(m=>matchRow(m,s,fin)).join("")}</div></div>`);
-   });
+ let htmlParts=[];
+ if(tourType(s)==="ucl"){
+   if(s.tournament.phase==="league") htmlParts.push(uclLeagueTableHTML(s));
+   else htmlParts.push(uclBracketHTML(s,fin));
  }else{
    const rounds=[...new Set(tMatches(s,"knockout").map(m=>m.round))];
    rounds.forEach(r=>htmlParts.push(`<div class="tournament-round"><div class="tournament-round-head">🏆 ${esc(r)}</div><div class="match-list">${tMatches(s,"knockout").filter(m=>m.round===r).map(m=>matchRow(m,s,fin)).join("")}</div></div>`));
  }
  $("matches").innerHTML=htmlParts.join("")||'<div class="empty">ยังไม่มีโปรแกรม</div>';
  const done=s.matches.filter(m=>m.hs!==null&&m.as!==null).length;
- $("weekTitle").textContent=tourName(tourType(s))+" · "+(s.tournament.phase==="group"?"รอบแบ่งกลุ่ม":s.tournament.round||"Knockout");
+ $("weekTitle").textContent=tourName(tourType(s))+" · "+(s.tournament.phase==="league"?"League Phase":s.tournament.round||"Knockout");
  $("weekSubtitle").textContent=seasonLabel(s)+" · "+seasonTeams(s).length+" ทีม · แข่งแล้ว "+done+"/"+s.matches.length+" นัด";
  $("weekMatchCount").textContent=s.matches.length+" นัด";
- $("schSub").textContent=tourType(s)==="ucl"?"UCL · แบ่งกลุ่มเหย้า-เยือน → Knockout → นัดชิงเกมเดียว":tourType(s)==="facup"?"FA Cup · Knockout เกมเดียวจนถึงนัดชิง":"League";
+ $("schSub").textContent=tourType(s)==="ucl"?"UCL · League Phase/แบ่งสาย → Knockout → นัดชิงเกมเดียว":"League";
  let banner="";
- if(s.tournament.phase==="group"&&allPhasePlayed(s,"group"))banner=`<div class="banner"><span>🎯 รอบแบ่งกลุ่มครบแล้ว — กดปุ่มเพื่อจับคู่รอบ Knockout</span><button class="btn primary" onclick="tournamentAdvance()">➡️ เข้ารอบ Knockout</button></div>`;
+ if(s.tournament.phase==="league"&&uclLeagueComplete(s))banner=`<div class="banner"><span>🎯 League Phase ครบแล้ว — อันดับ 1–8 เข้ารอบ 16 ทีม, อันดับ 9–24 ไป Play-off</span><button class="btn primary" onclick="tournamentAdvance()">➡️ สร้าง Knockout Play-off</button></div>`;
  else if(s.tournament.phase==="knockout"&&tMatches(s,"knockout").filter(m=>m.round===s.tournament.round).length&&tMatches(s,"knockout").filter(m=>m.round===s.tournament.round).every(m=>m.winner))banner=`<div class="banner"><span>🎉 ${esc(s.tournament.round)} ครบแล้ว</span><button class="btn primary" onclick="tournamentAdvance()">➡️ สร้างรอบถัดไป</button></div>`;
  $("schBanner").innerHTML=fin?`<div class="banner"><span>🏆 ${esc(tourName(tourType(s)))} จบแล้ว · ${esc(team(s.champion,s).name)}</span><button class="btn secondary" onclick="openHistory('${s.id}')">ดูสรุป →</button></div>`:banner;
 }
-function tourIcon(t){return t==="ucl"?"⭐":t==="facup"?"🏆":"⚽"}
+function tourIcon(t){return t==="ucl"?"⭐":"⚽"}
 function switchCategory(k){
  const cur=season();if(catOf(cur)===k)return;
  const inYear=seasonsOf(cur.year).filter(x=>catOf(x)===k);
@@ -1310,7 +1362,7 @@ function scSave(){
 function finishSeason(){
  const s=season();
  if(tourType(s)==="league"){finishSeasonLeague();return}
- if(s.tournament.phase==="group"){alert("UCL ยังอยู่รอบแบ่งกลุ่ม กรุณาแข่งให้ครบและเข้ารอบ Knockout ก่อน");return}
+ if(tourType(s)==="ucl"&&s.tournament.phase==="league"){alert("UCL ยังอยู่ League Phase กรุณาแข่งให้ครบและสร้าง Knockout Play-off ก่อน");return}
  if(s.tournament.round!=="Final"){alert("กรุณาแข่งขันรอบ Knockout ให้ครบก่อน");return}
  const fm=tMatches(s,"knockout").filter(m=>m.round==="Final");
  if(!fm.length||!fm[0].winner){alert("กรุณาบันทึกผลนัดชิงและระบุผู้ชนะก่อน");return}
@@ -1318,7 +1370,7 @@ function finishSeason(){
 }
 function tournamentAdvance(){
  const s=season();
- if(tourType(s)==="ucl"&&s.tournament.phase==="group"){advanceUCL(s);renderSchedule();return}
+ if(tourType(s)==="ucl"){advanceUCL(s);renderSchedule();return}
  if(tourType(s)!=="league"){nextKORound(s);renderSchedule();return}
 }
 function bootTournamentPatch(){
